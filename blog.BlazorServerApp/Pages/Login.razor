@@ -1,6 +1,10 @@
-﻿@page "/login"
+﻿﻿
+@page "/login"
+
+@using blog.BlazorServerApp.Authentication
 @using blog.BlazorServerApp.Models
 
+@inject BlogAuthenticationStateProvider BlogAuthStateProvider
 @inject NavigationManager NavigationManager
 
 @if (_isProcessing)
@@ -10,7 +14,6 @@
         <div class="loading-text fs-1 text-white">Logging-in...</div>
     </div>
 }
-
 
 <EditForm Model="_model" OnValidSubmit="LoginAsync">
     <DataAnnotationsValidator />
@@ -27,9 +30,14 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <InputText typeof="password" @bind-Value="_model.Password" class="form-control" placeholder="Enter password" />
+                    <InputText type="password" @bind-Value="_model.Password" class="form-control" placeholder="Enter password" />
                     <ValidationMessage For="()=> _model.Password" />
                 </div>
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <p class="text-danger">@_error</p>
+                }
             </div>
             <div class="card-footer">
                 <button type="submit" class="btn btn-success btn-sm">Login</button>
@@ -50,15 +58,30 @@
         _isProcessing = true;
         try
         {
-            await Task.Delay(2000);
-            //throw new Exception("test exception");
-            NavigationManager.NavigateTo("/");
+            _error = await BlogAuthStateProvider.LoginAsync(_model);
+            if (!string.IsNullOrWhiteSpace(_error))
+            {
+                _isProcessing = false;
+            }
+            else
+            {
+                var loggedInUser = BlogAuthStateProvider.LoggedInUser;
+                if (loggedInUser.IsEmpty)
+                {
+                    _error = "Could not log in. Please try again";
+                    _isProcessing = false;
+                }
+                else
+                {
+                    // Successful login
+                    NavigationManager.NavigateTo("/");
+                }
+            }
         }
         catch (Exception ex)
         {
             _isProcessing = false;
             _error = ex.Message;
-            //throw;
         }
     }
 }
